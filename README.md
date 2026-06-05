@@ -4,6 +4,8 @@
 
 Click through 14 slides that go from *why this exists at all* → *what's inside* → *how to use it*. Most slides are interactive: live simulations, click-to-explore state machines, animated SQL queries, a step-through claim race, and more.
 
+> 🎤 Originally presented at the **Waltham Show & Tell**.
+
 ![title slide](docs/screenshots/01-title.png)
 
 ---
