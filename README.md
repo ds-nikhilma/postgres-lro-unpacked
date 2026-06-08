@@ -62,7 +62,7 @@ The deck is grouped into seven sections, going from *setup* → *core mechanics*
 |---|-------|---------------|
 | 1 | **Title** — cover · live workitems pulse | The wordmark and a live `workitems_active`-style ticker that tells you immediately what kind of system this talk is about. ![title](docs/screenshots/01-title.png) |
 | 2 | **The Problem** — watch a 4-min request fail | Two parallel timelines play in real time (20 s of playback = 4 minutes of work). The "without" lane shows the gateway killing the HTTP connection at 60 s while the work keeps running with no one listening. The "with" lane shows three short calls (submit → poll → result) on the same axis. ![problem](docs/screenshots/02-problem.png) |
-| 3 | **What is an LRO?** — three calls, not one | The protocol, shown as a literal request/response log. Hover the three verbs (`POST /jobs`, `GET /jobs/{id}`, `DELETE /jobs/{id}`) for intent; press play to watch a real exchange unfold. No restaurant analogy. ![lro intro](docs/screenshots/03-lro-intro.png) |
+| 3 | **What is an LRO?** — three calls, not one | The protocol, shown as a literal request/response log. Hover the three verbs (`POST /jobs`, `GET /jobs/{id}`, `DELETE /jobs/{id}`) for intent; press play to watch a real exchange unfold. ![lro intro](docs/screenshots/03-lro-intro.png) |
 | 4 | **Foundation** — why a framework, not a library | A two-column "concern checklist": every claim/heartbeat/cache/GC concern that *used* to be copy-pasted ~200 LOC per service is now owned by the framework. Click a row to see what it actually requires. ![foundation](docs/screenshots/04-foundation.png) |
 
 ### The big picture
