@@ -1,72 +1,26 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useEffect, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
 import { SlideProps } from '../types';
 
 /**
- * Four built-in features, presented as tabs with a small live visual
- * each:
- *   - Heartbeat: a clock that ticks claim_until forward each beat
- *   - Cache:     same key → "hit", different key → "miss"
- *   - GC:        sweep across an inactive table marking old rows
- *   - Orchestration: a parent op fanning out to two child ops
+ * "While you sleep."
+ *
+ * Four mini-instruments running side-by-side, all at once. No tabs.
+ * The audience walks up and sees the framework's quiet background
+ * work — heartbeats ticking, the cache running counter, the GC sweep
+ * crawling, the orchestration tree ebbing and flowing.
+ *
+ * The point is the *parallel* nature of the work, not a tour of
+ * separate features. It's a control-room view.
  */
 
-type FeatureId = 'heartbeat' | 'cache' | 'gc' | 'orchestration';
-
-interface Feature {
-  id: FeatureId;
-  icon: string;
-  label: string;
-  oneLiner: string;
-  body: string;
-  color: string;
-}
-
-const FEATURES: Feature[] = [
-  {
-    id: 'heartbeat',
-    icon: '💓',
-    label: 'heartbeat & reclaim',
-    oneLiner: 'workers extend their claim while alive',
-    body: 'A worker that took a long claim sends periodic heartbeats. Each heartbeat just bumps claimed_until forward. If the worker dies, heartbeats stop, claimed_until lapses, and another worker can claim the orphan — no work is ever lost.',
-    color: '#8b5cf6',
-  },
-  {
-    id: 'cache',
-    icon: '🗃️',
-    label: 'request caching',
-    oneLiner: 'same input → same operation, no rework',
-    body: 'Submit with a cache_key (e.g. hash of the input + worker version). If a non-failed operation with that key already exists, the call returns the existing operation_id. Two clients asking for the same expensive GPU job get billed once.',
-    color: '#06b6d4',
-  },
-  {
-    id: 'gc',
-    icon: '🧹',
-    label: 'garbage collection',
-    oneLiner: 'old rows are swept on a schedule',
-    body: 'A background sweep moves terminal items from the active table to the inactive table (keeps claim queries fast), and later soft-deletes very old inactive rows per the configured retention. No external cron job needed.',
-    color: '#f59e0b',
-  },
-  {
-    id: 'orchestration',
-    icon: '🌳',
-    label: 'multi-service orchestration',
-    oneLiner: 'one operation fans out to many',
-    body: 'A parent operation enqueues children in other LRO services. The parent stays in running until all children reach a terminal state. Status, cancel and progress propagate down the tree — without a separate workflow engine.',
-    color: '#22c55e',
-  },
-];
-
 export const FeaturesSlide: React.FC<SlideProps> = ({ isActive }) => {
-  const [active, setActive] = useState<FeatureId>('heartbeat');
   if (!isActive) return null;
-
-  const feature = FEATURES.find(f => f.id === active) ?? FEATURES[0];
 
   return (
     <div style={{
       display: 'flex', flexDirection: 'column',
-      height: '100%', padding: '24px 32px', gap: 16,
+      height: '100%', padding: '24px 32px', gap: 14,
     }}>
       <div>
         <motion.h2
@@ -74,440 +28,405 @@ export const FeaturesSlide: React.FC<SlideProps> = ({ isActive }) => {
           animate={{ opacity: 1, x: 0 }}
           style={{ fontSize: 28, fontWeight: 800, color: '#0f172a', margin: 0 }}
         >
-          built-in features
+          while you sleep
           <span style={{ fontSize: 15, color: '#8b5cf6', marginLeft: 12, fontFamily: 'monospace', fontWeight: 600 }}>
-            · the four things you'd otherwise reinvent
+            · the four things postgres-lro does on its own
           </span>
         </motion.h2>
         <div style={{ fontSize: 13, color: '#475569', marginTop: 6, fontFamily: 'monospace' }}>
-          tab through to see each in action
+          all four are running right now · nothing to click · this is what the framework looks like idling in production
         </div>
       </div>
 
-      {/* Tab bar */}
       <div style={{
+        flex: 1, minHeight: 0,
         display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
-        gap: 10,
+        gridTemplateColumns: '1fr 1fr',
+        gridTemplateRows: '1fr 1fr',
+        gap: 14,
       }}>
-        {FEATURES.map(f => {
-          const on = f.id === active;
+        <Panel title="heartbeat" subtitle="claim stays alive while the worker is alive" color="#ec4899" icon="💓">
+          <HeartbeatInstrument color="#ec4899" />
+        </Panel>
+        <Panel title="request cache" subtitle="same input · same op · billed once" color="#06b6d4" icon="🗃️">
+          <CacheInstrument color="#06b6d4" />
+        </Panel>
+        <Panel title="garbage collection" subtitle="terminal rows swept on a schedule" color="#f59e0b" icon="🧹">
+          <GCInstrument color="#f59e0b" />
+        </Panel>
+        <Panel title="orchestration" subtitle="parent stays running until all children done" color="#22c55e" icon="🌳">
+          <OrchestrationInstrument color="#22c55e" />
+        </Panel>
+      </div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────
+// Panel scaffold — header + body slot
+// ─────────────────────────────────────────────────────────────────────
+
+const Panel: React.FC<{
+  title: string; subtitle: string; color: string; icon: string;
+  children: React.ReactNode;
+}> = ({ title, subtitle, color, icon, children }) => (
+  <div style={{
+    display: 'flex', flexDirection: 'column',
+    background: '#ffffff',
+    border: '1px solid #e2e8f0',
+    borderTop: `4px solid ${color}`,
+    borderRadius: 12,
+    overflow: 'hidden',
+    minHeight: 0,
+  }}>
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 10,
+      padding: '12px 16px',
+      borderBottom: '1px solid #f1f5f9',
+    }}>
+      <div style={{
+        width: 32, height: 32, borderRadius: 8,
+        background: `${color}1a`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 18,
+      }}>
+        {icon}
+      </div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{
+          fontFamily: 'monospace', fontSize: 14, fontWeight: 800, color: '#0f172a',
+        }}>
+          {title}
+        </div>
+        <div style={{ fontSize: 11, color: '#475569', fontStyle: 'italic' }}>
+          {subtitle}
+        </div>
+      </div>
+      <span style={{
+        marginLeft: 'auto',
+        fontSize: 10, fontFamily: 'monospace',
+        color: color, fontWeight: 800,
+        textTransform: 'uppercase', letterSpacing: '0.08em',
+      }}>
+        ● live
+      </span>
+    </div>
+    <div style={{ flex: 1, minHeight: 0, padding: 14 }}>
+      {children}
+    </div>
+  </div>
+);
+
+// ─────────────────────────────────────────────────────────────────────
+// Heartbeat instrument — a sparkline of beats over time + "claim
+// until" timestamp that bumps forward on every beat
+// ─────────────────────────────────────────────────────────────────────
+
+const HeartbeatInstrument: React.FC<{ color: string }> = ({ color }) => {
+  const [beats, setBeats] = useState<number[]>([]);   // millis ago for each beat in the window
+  const [now, setNow] = useState(0);
+  useEffect(() => {
+    const start = Date.now();
+    const beatT = setInterval(() => {
+      setBeats(prev => [...prev, Date.now() - start].slice(-12));
+    }, 1400);
+    const nowT = setInterval(() => setNow(Date.now() - start), 100);
+    return () => { clearInterval(beatT); clearInterval(nowT); };
+  }, []);
+
+  const sinceLast = beats.length > 0 ? Math.max(0, now - beats[beats.length - 1]) : 0;
+  const claimUntilMs = 5 * 60 * 1000;
+  const claimUntilSec = Math.max(0, (claimUntilMs - sinceLast) / 1000);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, height: '100%' }}>
+      {/* sparkline */}
+      <div style={{
+        flex: 1, minHeight: 0,
+        background: '#f8fafc', borderRadius: 8,
+        display: 'flex', alignItems: 'flex-end', gap: 3,
+        padding: '8px 10px',
+      }}>
+        {Array.from({ length: 12 }).map((_, i) => {
+          const t = beats[i];
+          const age = t == null ? 999999 : now - t;
+          const h = Math.max(8, 50 - age / 80);
           return (
-            <motion.button
-              key={f.id}
-              onClick={() => setActive(f.id)}
-              whileHover={{ y: -2 }}
-              whileTap={{ scale: 0.98 }}
+            <div
+              key={i}
               style={{
-                textAlign: 'left',
-                padding: '14px 16px',
-                background: on ? `${f.color}12` : '#f8fafc',
-                border: on ? `2px solid ${f.color}` : '1px solid #e2e8f0',
-                borderRadius: 10,
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                display: 'flex', flexDirection: 'column', gap: 6,
+                flex: 1,
+                height: h,
+                background: t == null ? '#e2e8f0' : color,
+                opacity: t == null ? 0.3 : 1,
+                borderRadius: 3,
+                transition: 'height 0.18s',
               }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 22 }}>{f.icon}</span>
-                <span style={{ fontSize: 14, fontFamily: 'monospace', fontWeight: 800, color: '#0f172a' }}>
-                  {f.label}
-                </span>
-              </div>
-              <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.4 }}>
-                {f.oneLiner}
-              </div>
-            </motion.button>
+            />
           );
         })}
       </div>
-
-      {/* Detail body */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={feature.id}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.25 }}
-          style={{
-            flex: 1,
-            display: 'grid',
-            gridTemplateColumns: '1fr 1.2fr',
-            gap: 14,
-            minHeight: 0,
-          }}
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 12,
+        fontSize: 12, fontFamily: 'monospace',
+      }}>
+        <span style={{ color: '#475569' }}>beats sent</span>
+        <span style={{ color: '#0f172a', fontWeight: 700, textAlign: 'right' }}>
+          {beats.length}
+        </span>
+        <span style={{ color: '#475569' }}>claim_until (s remaining)</span>
+        <motion.span
+          key={beats.length}
+          initial={{ color, scale: 1.06 }}
+          animate={{ color: '#0f172a', scale: 1 }}
+          transition={{ duration: 0.4 }}
+          style={{ fontWeight: 700, textAlign: 'right' }}
         >
-          {/* Left: narration */}
-          <div style={{
-            background: '#fff', borderRadius: 12,
-            border: `1px solid ${feature.color}40`,
-            padding: '20px 24px',
-            display: 'flex', flexDirection: 'column', gap: 12,
-          }}>
-            <div style={{
-              fontSize: 12, color: feature.color, fontWeight: 800,
-              fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.08em',
-            }}>
-              {feature.label}
-            </div>
-            <div style={{ fontSize: 18, color: '#0f172a', lineHeight: 1.55 }}>
-              {feature.body}
-            </div>
-          </div>
-
-          {/* Right: live visual */}
-          <div style={{
-            background: '#f8fafc', borderRadius: 12,
-            border: '1px solid #e2e8f0',
-            padding: 18,
-            display: 'flex', flexDirection: 'column',
-            minHeight: 0,
-          }}>
-            <Visualizer id={feature.id} color={feature.color} />
-          </div>
-        </motion.div>
-      </AnimatePresence>
+          {Math.round(claimUntilSec)}
+        </motion.span>
+      </div>
     </div>
   );
 };
 
 // ─────────────────────────────────────────────────────────────────────
-// Visualizers — one per feature, lightweight
+// Cache instrument — hit/miss ratio over time, simulated requests
+// arrive on a poisson-ish schedule
 // ─────────────────────────────────────────────────────────────────────
 
-const Visualizer: React.FC<{ id: FeatureId; color: string }> = ({ id, color }) => {
-  switch (id) {
-    case 'heartbeat':     return <HeartbeatViz color={color} />;
-    case 'cache':         return <CacheViz color={color} />;
-    case 'gc':            return <GcViz color={color} />;
-    case 'orchestration': return <OrchestrationViz color={color} />;
-  }
-};
-
-const HeartbeatViz: React.FC<{ color: string }> = ({ color }) => {
-  // Beat every 1.6s. Each beat extends claimed_until by 5 minutes.
-  // A "crash" stops the heart; after 2 beats with no heartbeat, the
-  // claim expires and another worker reclaims.
-  const [beats, setBeats] = useState(0);
-  const [crashed, setCrashed] = useState(false);
-  const [reclaimed, setReclaimed] = useState(false);
-  const start = useRef(new Date('2025-04-16T10:00:00Z').getTime()).current;
+const CacheInstrument: React.FC<{ color: string }> = ({ color }) => {
+  const [hits, setHits] = useState(0);
+  const [miss, setMiss] = useState(0);
+  const [trail, setTrail] = useState<('hit' | 'miss')[]>([]);
+  const seenKeysRef = useRef(new Set<string>());
 
   useEffect(() => {
-    if (crashed) return;
-    const t = setInterval(() => setBeats(b => b + 1), 1600);
+    const t = setInterval(() => {
+      // 70% of new requests reuse one of N keys → naturally cache-hit
+      const space = ['a', 'b', 'c', 'd', 'e', 'f'];
+      const key = Math.random() < 0.7
+        ? space[Math.floor(Math.random() * 3)]                 // hot keys
+        : space[Math.floor(Math.random() * space.length)];     // any key
+      const isHit = seenKeysRef.current.has(key);
+      seenKeysRef.current.add(key);
+      if (isHit) setHits(h => h + 1); else setMiss(m => m + 1);
+      setTrail(prev => [...prev, (isHit ? 'hit' : 'miss') as 'hit' | 'miss'].slice(-30));
+    }, 600);
     return () => clearInterval(t);
-  }, [crashed]);
+  }, []);
 
-  useEffect(() => {
-    if (!crashed) return;
-    const t = setTimeout(() => setReclaimed(true), 3000);
-    return () => clearTimeout(t);
-  }, [crashed]);
-
-  const claimedUntil = new Date(start + (5 * 60 * 1000 * (beats + 1))).toISOString().slice(11, 19);
+  const total = hits + miss;
+  const hitRate = total === 0 ? 0 : Math.round((hits / total) * 100);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, height: '100%' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <motion.div
-          animate={crashed ? { scale: 1, color: '#94a3b8' } : { scale: [1, 1.18, 1] }}
-          transition={crashed ? {} : { duration: 1.6, repeat: Infinity }}
-          style={{ fontSize: 56 }}
-        >
-          {crashed ? '💀' : '💓'}
-        </motion.div>
-        <div>
-          <div style={{ fontSize: 13, color: '#475569', fontFamily: 'monospace' }}>
-            worker-pod-7x9k
-          </div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: crashed ? '#94a3b8' : color, fontFamily: 'monospace' }}>
-            {crashed ? 'no heartbeat' : `beat #${beats + 1}`}
-          </div>
-        </div>
-      </div>
-
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, height: '100%' }}>
       <div style={{
-        padding: '14px 18px', background: '#ffffff',
-        border: '1px solid #e2e8f0', borderRadius: 10,
+        flex: 1, minHeight: 0,
+        background: '#f8fafc', borderRadius: 8,
+        padding: '8px 10px',
+        display: 'flex', alignItems: 'flex-end', gap: 3,
       }}>
-        <div style={{ fontSize: 12, color: '#475569', fontFamily: 'monospace', marginBottom: 4 }}>
-          claimed_until
-        </div>
-        <motion.div
-          key={beats}
-          initial={{ color: color, scale: 1.06 }}
-          animate={{ color: crashed ? '#dc2626' : '#0f172a', scale: 1 }}
-          transition={{ duration: 0.6 }}
-          style={{ fontSize: 22, fontFamily: 'monospace', fontWeight: 800 }}
-        >
-          10:{claimedUntil.slice(3)}
-        </motion.div>
+        {Array.from({ length: 30 }).map((_, i) => {
+          const v = trail[i];
+          return (
+            <div
+              key={i}
+              style={{
+                flex: 1,
+                height: v === 'hit' ? 42 : v === 'miss' ? 22 : 6,
+                background:
+                  v === 'hit'  ? color :
+                  v === 'miss' ? '#fda4af' :
+                                 '#e2e8f0',
+                borderRadius: 2,
+                transition: 'height 0.2s',
+              }}
+            />
+          );
+        })}
       </div>
-
-      {reclaimed && (
-        <motion.div
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          style={{
-            padding: '12px 16px', background: '#dcfce7',
-            border: '1px solid #86efac', borderRadius: 10,
-            fontSize: 14, color: '#166534', fontWeight: 600,
-          }}
-        >
-          ✅ claim_until lapsed — <strong>worker-pod-3a2m</strong> claimed the orphaned work
-        </motion.div>
-      )}
-
-      <div style={{ flex: 1 }} />
-
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button
-          onClick={() => setCrashed(true)}
-          disabled={crashed}
-          style={{
-            padding: '8px 14px', background: crashed ? '#e2e8f0' : '#ef4444',
-            color: crashed ? '#94a3b8' : '#fff',
-            border: 'none', borderRadius: 8,
-            fontFamily: 'monospace', fontSize: 13, fontWeight: 700,
-            cursor: crashed ? 'not-allowed' : 'pointer',
-          }}
-        >
-          💥 crash worker
-        </button>
-        <button
-          onClick={() => { setBeats(0); setCrashed(false); setReclaimed(false); }}
-          style={{
-            padding: '8px 14px', background: '#ffffff',
-            border: '1px solid #e2e8f0', borderRadius: 8,
-            color: '#475569', fontFamily: 'monospace', fontSize: 13, fontWeight: 700,
-            cursor: 'pointer',
-          }}
-        >
-          ↺ reset
-        </button>
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'auto auto 1fr', gap: 10,
+        fontSize: 12, fontFamily: 'monospace',
+      }}>
+        <span style={{ color: '#16a34a', fontWeight: 700 }}>{hits} hits</span>
+        <span style={{ color: '#dc2626', fontWeight: 700 }}>{miss} miss</span>
+        <span style={{ color: '#0f172a', fontWeight: 800, textAlign: 'right' }}>
+          hit-rate {hitRate}%
+        </span>
       </div>
     </div>
   );
 };
 
-const CacheViz: React.FC<{ color: string }> = ({ color }) => {
-  const [log, setLog] = useState<{ key: string; hit: boolean }[]>([]);
-  const submit = (key: string) => {
-    setLog(l => {
-      const prev = l.find(e => e.key === key);
-      return [...l, { key, hit: !!prev }].slice(-8);
-    });
-  };
+// ─────────────────────────────────────────────────────────────────────
+// GC instrument — a broom sweeping across rows, rows fade out as
+// they're swept
+// ─────────────────────────────────────────────────────────────────────
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, height: '100%' }}>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {['hash-a', 'hash-b', 'hash-c'].map(k => (
-          <button
-            key={k}
-            onClick={() => submit(k)}
-            style={{
-              padding: '8px 14px', background: '#ffffff',
-              border: `1px solid ${color}55`, borderRadius: 8,
-              color: '#0f172a', fontFamily: 'monospace', fontSize: 13, fontWeight: 700,
-              cursor: 'pointer',
-            }}
-          >
-            POST /jobs · cache_key={k}
-          </button>
-        ))}
-        <button
-          onClick={() => setLog([])}
-          style={{
-            marginLeft: 'auto',
-            padding: '8px 14px', background: 'transparent',
-            border: '1px solid #e2e8f0', borderRadius: 8,
-            color: '#475569', fontFamily: 'monospace', fontSize: 12, fontWeight: 700,
-            cursor: 'pointer',
-          }}
-        >
-          ↺ clear
-        </button>
-      </div>
-
-      <div style={{
-        flex: 1, minHeight: 0, overflow: 'auto',
-        background: '#0f172a', borderRadius: 10,
-        padding: 14,
-        fontFamily: 'monospace', fontSize: 13,
-      }}>
-        {log.length === 0 && (
-          <div style={{ color: '#475569', fontStyle: 'italic' }}>
-            {'// submit a few requests to see hits stack up'}
-          </div>
-        )}
-        {log.map((e, i) => (
-          <motion.div
-            key={`${i}-${e.key}`}
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            style={{
-              color: e.hit ? '#86efac' : '#fda4af',
-              padding: '3px 0',
-            }}
-          >
-            {e.hit ? '✓ HIT' : '✗ MISS'} · cache_key={e.key} {e.hit ? '→ returned existing op' : '→ enqueued new op'}
-          </motion.div>
-        ))}
-      </div>
-
-      <div style={{
-        padding: '10px 14px', background: '#ecfeff',
-        border: '1px solid #67e8f9', borderRadius: 8,
-        fontSize: 13, color: '#155e75',
-      }}>
-        same cache_key → same operation_id is returned. nothing re-runs.
-      </div>
-    </div>
-  );
-};
-
-const GcViz: React.FC<{ color: string }> = ({ color }) => {
+const GCInstrument: React.FC<{ color: string }> = ({ color }) => {
   const [tick, setTick] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setTick(x => (x + 1) % 12), 700);
+    const t = setInterval(() => setTick(x => (x + 1) % 14), 700);
     return () => clearInterval(t);
   }, []);
 
-  const rows = Array.from({ length: 10 }, (_, i) => ({
-    id: `op-${(0xab + i).toString(16)}`,
-    state: i < tick - 1 ? 'swept' : i === tick - 1 ? 'sweeping' : 'kept',
-    age: `${30 + i * 12}d`,
-  }));
-
+  const rows = Array.from({ length: 12 }, (_, i) => i);
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, height: '100%' }}>
       <div style={{
-        fontSize: 13, color: '#475569', fontFamily: 'monospace',
+        flex: 1, minHeight: 0, overflow: 'hidden',
+        background: '#f8fafc', borderRadius: 8,
+        padding: 6,
+        display: 'flex', flexDirection: 'column', gap: 3,
       }}>
-        inactive_workitems · GC pass · retention = 30 d
+        {rows.map(i => {
+          const swept = i < tick - 1;
+          const sweeping = i === tick - 1;
+          const ageDays = 30 + i * 3;
+          return (
+            <div
+              key={i}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr auto',
+                gap: 8,
+                padding: '3px 8px',
+                background:
+                  swept    ? '#fef2f2' :
+                  sweeping ? `${color}26` :
+                             'transparent',
+                opacity: swept ? 0.5 : 1,
+                borderRadius: 4,
+                transition: 'all 0.3s',
+                alignItems: 'center',
+              }}
+            >
+              <span style={{
+                fontFamily: 'monospace', fontSize: 11,
+                color: swept ? '#94a3b8' : '#334155',
+                textDecoration: swept ? 'line-through' : 'none',
+              }}>
+                op-{(0xab + i).toString(16)}
+              </span>
+              <span style={{
+                fontFamily: 'monospace', fontSize: 10,
+                color:
+                  swept    ? '#dc2626' :
+                  sweeping ? color :
+                             '#16a34a',
+                fontWeight: 700,
+              }}>
+                {swept ? '🗑 swept' : sweeping ? '🧹 …' : `${ageDays}d`}
+              </span>
+            </div>
+          );
+        })}
       </div>
       <div style={{
-        flex: 1, minHeight: 0, overflow: 'auto',
-        background: '#ffffff', borderRadius: 10,
-        border: '1px solid #e2e8f0',
+        fontSize: 11, fontFamily: 'monospace', color: '#475569', textAlign: 'right',
       }}>
-        {rows.map(r => (
-          <div
-            key={r.id}
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '120px 80px 1fr',
-              gap: 10,
-              padding: '8px 14px',
-              borderBottom: '1px solid #f1f5f9',
-              alignItems: 'center',
-              background:
-                r.state === 'swept'    ? '#fef2f2' :
-                r.state === 'sweeping' ? `${color}1a` :
-                                          'transparent',
-              transition: 'background 0.3s',
-            }}
-          >
-            <span style={{ fontFamily: 'monospace', fontSize: 13, color: '#0f172a', fontWeight: 600 }}>
-              {r.id}
-            </span>
-            <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#475569' }}>
-              {r.age} old
-            </span>
-            <span style={{
-              fontSize: 12, fontFamily: 'monospace', fontWeight: 700,
-              color:
-                r.state === 'swept'    ? '#dc2626' :
-                r.state === 'sweeping' ? color :
-                                          '#16a34a',
-            }}>
-              {r.state === 'swept'    ? '🗑 deleted' :
-               r.state === 'sweeping' ? '🧹 sweeping...' :
-                                        '✓ kept'}
-            </span>
-          </div>
-        ))}
+        retention 30d · sweep every 5 min
       </div>
     </div>
   );
 };
 
-const OrchestrationViz: React.FC<{ color: string }> = ({ color }) => {
-  const [stage, setStage] = useState(0);
+// ─────────────────────────────────────────────────────────────────────
+// Orchestration instrument — parent + children, randomized state
+// transitions
+// ─────────────────────────────────────────────────────────────────────
+
+interface Node { name: string; state: 'queued' | 'running' | 'done'; }
+
+const OrchestrationInstrument: React.FC<{ color: string }> = ({ color }) => {
+  const [parent, setParent] = useState<Node>({ name: 'ortho-plan-lro', state: 'running' });
+  const [kids, setKids] = useState<Node[]>([
+    { name: 'margin-line-detection',    state: 'queued'  },
+    { name: 'cbct-anatomy-segmentation',state: 'queued'  },
+    { name: 'tooth-recognition',        state: 'queued'  },
+  ]);
+
   useEffect(() => {
-    const t = setInterval(() => setStage(s => (s + 1) % 4), 1800);
-    return () => clearInterval(t);
+    const tick = setInterval(() => {
+      setKids(prev => {
+        const all = prev.every(k => k.state === 'done');
+        if (all) {
+          // restart cycle
+          setParent({ name: 'ortho-plan-lro', state: 'running' });
+          return prev.map(k => ({ ...k, state: 'queued' as const }));
+        }
+        // advance one random non-done child
+        const candidates = prev.map((k, i) => ({ k, i })).filter(({ k }) => k.state !== 'done');
+        if (candidates.length === 0) return prev;
+        const pick = candidates[Math.floor(Math.random() * candidates.length)];
+        const next = [...prev];
+        next[pick.i] = {
+          ...pick.k,
+          state: pick.k.state === 'queued' ? 'running' : 'done',
+        };
+        if (next.every(k => k.state === 'done')) setParent(p => ({ ...p, state: 'done' }));
+        return next;
+      });
+    }, 1100);
+    return () => clearInterval(tick);
   }, []);
 
-  const Node: React.FC<{
-    label: string; subtitle: string;
-    state: 'queued' | 'running' | 'done';
-    x: number; y: number;
-  }> = ({ label, subtitle, state, x, y }) => {
-    const stateColor =
-      state === 'done'    ? '#22c55e' :
-      state === 'running' ? color :
-                            '#94a3b8';
-    return (
-      <motion.div
-        animate={{ borderColor: stateColor, boxShadow: state === 'running' ? `0 0 18px ${stateColor}55` : 'none' }}
-        style={{
-          position: 'absolute',
-          left: `${x}%`, top: y, transform: 'translateX(-50%)',
-          width: 200,
-          padding: '10px 14px',
-          background: '#fff',
-          border: `2px solid ${stateColor}`,
-          borderRadius: 10,
-        }}
-      >
-        <div style={{ fontSize: 13, fontFamily: 'monospace', fontWeight: 800, color: '#0f172a' }}>
-          {label}
-        </div>
-        <div style={{ fontSize: 11, fontFamily: 'monospace', color: '#475569', marginTop: 2 }}>
-          {subtitle}
-        </div>
-        <div style={{
-          fontSize: 11, fontFamily: 'monospace', fontWeight: 700,
-          color: stateColor, marginTop: 4, textTransform: 'uppercase',
-        }}>
-          {state}
-        </div>
-      </motion.div>
-    );
-  };
-
-  const parentState = stage >= 3 ? 'done' : 'running';
-  const child1 = stage >= 1 ? (stage >= 3 ? 'done' : 'running') : 'queued';
-  const child2 = stage >= 2 ? (stage >= 3 ? 'done' : 'running') : 'queued';
+  const stateColor = (s: Node['state']) =>
+    s === 'done'    ? '#22c55e' :
+    s === 'running' ? color     :
+                      '#94a3b8';
 
   return (
-    <div style={{ position: 'relative', height: '100%', minHeight: 0 }}>
-      <Node x={50} y={4}   label="ortho-plan-lro"        subtitle="parent op"           state={parentState as any} />
-      <Node x={26} y={130} label="margin-line-detection" subtitle="child 1"             state={child1 as any} />
-      <Node x={74} y={130} label="cbct-segmentation"     subtitle="child 2"             state={child2 as any} />
-
-      {/* Edges */}
-      <svg
-        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
-      >
-        <line x1="50" y1="20" x2="26" y2="55" stroke={color} strokeWidth="0.5" strokeDasharray="1 1" opacity={stage >= 1 ? 1 : 0.3} />
-        <line x1="50" y1="20" x2="74" y2="55" stroke={color} strokeWidth="0.5" strokeDasharray="1 1" opacity={stage >= 2 ? 1 : 0.3} />
-      </svg>
-
+    <div style={{
+      display: 'flex', flexDirection: 'column',
+      gap: 10, height: '100%', justifyContent: 'center', alignItems: 'center',
+    }}>
       <div style={{
-        position: 'absolute', left: 0, right: 0, bottom: 0,
-        padding: '10px 14px', background: '#f0fdf4',
-        border: '1px solid #86efac', borderRadius: 8,
-        fontSize: 13, color: '#166534',
+        padding: '8px 14px',
+        background: `${stateColor(parent.state)}12`,
+        border: `2px solid ${stateColor(parent.state)}`,
+        borderRadius: 8,
+        fontFamily: 'monospace', fontSize: 13,
+        fontWeight: 800, color: '#0f172a',
       }}>
-        parent stays <strong>running</strong> until every child reaches a terminal state. cancel propagates down.
+        {parent.name}
+        <span style={{ marginLeft: 8, color: stateColor(parent.state), fontSize: 11 }}>
+          · {parent.state}
+        </span>
+      </div>
+      <svg viewBox="0 0 200 28" style={{ width: '90%', height: 28 }} preserveAspectRatio="none">
+        <line x1="100" y1="0"  x2="100" y2="14" stroke="#cbd5e1" strokeWidth="1" />
+        <line x1="20"  y1="14" x2="180" y2="14" stroke="#cbd5e1" strokeWidth="1" />
+        <line x1="20"  y1="14" x2="20"  y2="28" stroke="#cbd5e1" strokeWidth="1" />
+        <line x1="100" y1="14" x2="100" y2="28" stroke="#cbd5e1" strokeWidth="1" />
+        <line x1="180" y1="14" x2="180" y2="28" stroke="#cbd5e1" strokeWidth="1" />
+      </svg>
+      <div style={{ display: 'flex', gap: 10, width: '100%', justifyContent: 'space-around' }}>
+        {kids.map(k => (
+          <div
+            key={k.name}
+            style={{
+              padding: '6px 10px',
+              background: '#ffffff',
+              border: `2px solid ${stateColor(k.state)}`,
+              borderRadius: 6,
+              minWidth: 0,
+              textAlign: 'center',
+            }}
+          >
+            <div style={{
+              fontFamily: 'monospace', fontSize: 11, fontWeight: 700,
+              color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              maxWidth: 130,
+            }}>
+              {k.name}
+            </div>
+            <div style={{ fontSize: 10, color: stateColor(k.state), fontFamily: 'monospace', fontWeight: 700 }}>
+              {k.state}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

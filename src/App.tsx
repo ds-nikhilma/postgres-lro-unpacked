@@ -30,13 +30,13 @@ interface SlideMeta {
 const slides: SlideMeta[] = [
   // ─── Intro ───────────────────────────────────────────────────────
   { title: 'Title',            component: TitleSlide,           group: 'intro',
-    subtitle: 'cover · who and what' },
+    subtitle: 'cover · live workitems pulse' },
   { title: 'The Problem',      component: ProblemSlide,         group: 'intro',
-    subtitle: 'why a framework at all' },
+    subtitle: 'watch a 4-min request fail' },
   { title: 'What is an LRO?',  component: LROIntroSlide,        group: 'intro',
-    subtitle: 'definition · café analogy' },
+    subtitle: 'three calls, not one' },
   { title: 'Foundation',       component: TimelineSlide,        group: 'intro',
-    subtitle: 'MLE services timeline' },
+    subtitle: 'why a framework, not a library' },
 
   // ─── The 5 polished core slides (untouched) ──────────────────────
   { title: 'Architecture',     component: ArchitectureSlide,    group: 'big',
@@ -52,15 +52,15 @@ const slides: SlideMeta[] = [
 
   // ─── Outro: features, usage, summary ─────────────────────────────
   { title: 'Built-in Features', component: FeaturesSlide,       group: 'features',
-    subtitle: 'heartbeat · cache · GC · orchestration' },
+    subtitle: 'four instruments, running live' },
   { title: 'Versioning',       component: VersioningSlide,      group: 'features',
-    subtitle: 'semver match modes' },
+    subtitle: 'rolling deploy in flight' },
   { title: 'How to Use It',    component: UsagePatternsSlide,   group: 'outro',
-    subtitle: 'three files, that’s the whole service' },
+    subtitle: 'before & after, side-by-side diff' },
   { title: 'DSFlow',           component: DSFlowSlide,          group: 'outro',
-    subtitle: 'scaffold a service from YAML' },
+    subtitle: '12 lines in · ~1.5k lines out' },
   { title: 'Summary',          component: SummarySlide,         group: 'outro',
-    subtitle: 'the whole thing on one screen' },
+    subtitle: 'one sentence · four receipts' },
 ];
 
 const GROUP_LABEL: Record<SlideGroup, string> = {
