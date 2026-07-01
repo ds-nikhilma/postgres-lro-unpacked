@@ -279,7 +279,7 @@ interface SlideProps {
 
 `goToSlide` accepts either an index or a case-insensitive substring of the title. Use it for cross-slide navigation — e.g. the `ArchitectureMini` "you-are-here" inset on the zoom-in slides links back to the full Architecture slide.
 
-### Design language
+### Design 
 
 The slides in this repo follow a small set of conventions. They aren't enforced — but if you follow them, every slide will look like it belongs to the same deck without you fighting CSS.
 
