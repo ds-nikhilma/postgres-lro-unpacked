@@ -31,7 +31,7 @@ This repo is two things in one:
 
 ---
 
-## Why build a deck this way?
+## Why build a deck this way? 
 
 Most decks die in two places: **Google Slides** (no interaction, no animation worth showing) and **Slidev/reveal.js** (great markup, but a click is rarely more than "next slide"). For technical talks where the *point* is "watch the system behave", neither is enough.
 
@@ -107,7 +107,7 @@ The deck is grouped into seven sections, going from *setup* → *core mechanics*
 
 ---
 
-## Use it for your own presentations
+## Use it for your own presentations in the future
 
 The fastest way to make this yours is to clone, run, delete my slides, and start adding your own. The framework gets out of the way.
 
